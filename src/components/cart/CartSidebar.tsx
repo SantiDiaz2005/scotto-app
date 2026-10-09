@@ -1,165 +1,132 @@
+import React, { useState } from 'react';
 import { useCart } from '../../context/CartContext';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 export const CartSidebar = () => {
-  const { cart, removeFromCart, updateQuantity, total } = useCart();
-  
-  // Reemplazá este número por el de tu cliente SA Scotto
-  const vendorPhone = "5491100000000"; 
+  const { items, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
+  const [isOpen, setIsOpen] = useState(false);
 
-  // --- 1. Enviar por WhatsApp (Directo a la app móvil o web) ---
-  const handleWhatsApp = () => {
-    if (cart.length === 0) return;
-    
-    let text = "Hola SA Scotto, te paso mi pedido:\n\n";
-    cart.forEach(item => {
-      text += `* ${item.quantity}x ${item.name} ($${(item.price * item.quantity).toLocaleString('es-AR')})\n`;
-    });
-    text += `\n*Total estimado: $${total.toLocaleString('es-AR')}*`;
-
-    // Usar api.whatsapp.com suele abrir la app directamente en celulares
-    const url = `https://api.whatsapp.com/send/?phone=${vendorPhone}&text=${encodeURIComponent(text)}&type=phone_number&app_absent=0`;
-    window.open(url, '_blank');
+  const generatePDF = () => {
+    alert("Próximamente: Generar PDF");
   };
 
- // --- 2. Exportar a Excel ---
-  const handleExportExcel = () => {
-    if (cart.length === 0) return;
-
-    // Agregamos ": any[]" para permitir números y texto en la misma columna
-    const dataToExport: any[] = cart.map(item => ({
-      'Categoría': item.category,
-      'Producto': item.name,
-      'Cantidad': item.quantity,
-      'Precio Unitario': `$${item.price.toLocaleString('es-AR')}`,
-      'Subtotal': `$${(item.price * item.quantity).toLocaleString('es-AR')}`
-    }));
-
-    // Agregamos la fila del total al final
-    dataToExport.push({
-      'Categoría': '',
-      'Producto': '',
-      'Cantidad': 'TOTAL:',
-      'Precio Unitario': '',
-      'Subtotal': `$${total.toLocaleString('es-AR')}`
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
-    
-    // Genera y descarga el archivo
-    XLSX.writeFile(workbook, "Pedido_SAScotto.xlsx");
+  const sendWhatsApp = () => {
+    alert("Próximamente: Enviar por WhatsApp");
   };
 
-  // --- 3. Exportar a PDF ---
-  const handleExportPDF = () => {
-    if (cart.length === 0) return;
-
-    const doc = new jsPDF();
-    
-    // Título del PDF
-    doc.setFontSize(18);
-    doc.text("Pedido - SA Scotto Accesorios", 14, 22);
-    doc.setFontSize(11);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`, 14, 30);
-
-    // Tabla de productos
-    const tableData = cart.map(item => [
-      item.name,
-      item.quantity.toString(),
-      `$${item.price.toLocaleString('es-AR')}`,
-      `$${(item.price * item.quantity).toLocaleString('es-AR')}`
-    ]);
-
-    autoTable(doc, {
-      startY: 40,
-      head: [['Producto', 'Cant.', 'Precio Unit.', 'Subtotal']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [220, 38, 38] }, // Color rojo oscuro para el encabezado
-    });
-
-    // Total final
-    const finalY = (doc as any).lastAutoTable.finalY || 40;
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total: $${total.toLocaleString('es-AR')}`, 14, finalY + 10);
-
-    doc.save("Pedido_SAScotto.pdf");
+  const downloadExcel = () => {
+    alert("Próximamente: Bajar Excel");
   };
 
   return (
-    <aside className="w-[350px] bg-gray-900 text-white flex flex-col shadow-2xl h-full border-l border-gray-800 flex-shrink-0">
-      <div className="p-4 border-b border-gray-700 bg-gray-950">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          🛒 Pedido Actual
-        </h2>
-      </div>
-
-      {/* Lista de items en el carrito */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {cart.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center mt-10">El carrito está vacío.</p>
-        ) : (
-          cart.map((item) => (
-            <div key={item.id} className="bg-gray-800 p-3 rounded border border-gray-700">
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-semibold line-clamp-2 pr-2">{item.name}</span>
-                <button onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-300 text-sm font-bold">
-                  ✕
-                </button>
-              </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 bg-gray-900 rounded px-2 py-1">
-                  <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-gray-400 hover:text-white px-1">-</button>
-                  <span className="text-sm w-4 text-center">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-gray-400 hover:text-white px-1">+</button>
-                </div>
-                <span className="text-sm text-green-400 font-bold">
-                  ${(item.price * item.quantity).toLocaleString('es-AR')}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Botonera inferior */}
-      <div className="p-4 bg-gray-950 border-t border-gray-700 flex flex-col gap-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-400">Total estim.:</span>
-          <span className="text-xl font-bold text-white">${total.toLocaleString('es-AR')}</span>
-        </div>
-        
-        {/* Botones de acción */}
-        <button 
-          onClick={handleWhatsApp}
-          disabled={cart.length === 0}
-          className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2 px-4 rounded transition-colors flex justify-center items-center gap-2"
+    <React.Fragment>
+      {/* Botón flotante SOLO visible en celular */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="md:hidden fixed bottom-6 right-6 bg-yellow-600 text-black p-4 rounded-full shadow-2xl z-50 flex items-center justify-center font-bold border-2 border-black"
         >
-          Enviar por WhatsApp
+          🛒 <span className="ml-2 bg-black text-white px-2 rounded-full text-sm">{items.length}</span>
         </button>
+      )}
 
-        <div className="flex gap-2">
-          <button 
-            onClick={handleExportPDF}
-            disabled={cart.length === 0}
-            className="flex-1 bg-red-700 hover:bg-red-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2 px-2 rounded text-sm transition-colors"
-          >
-            Bajar PDF
-          </button>
-          <button 
-            onClick={handleExportExcel}
-            disabled={cart.length === 0}
-            className="flex-1 bg-blue-700 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-2 px-2 rounded text-sm transition-colors"
-          >
-            Bajar Excel
-          </button>
+      {/* Fondo oscuro para cuando se abre en celular */}
+      {isOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Contenedor del carrito */}
+      <div className={`
+        fixed inset-y-0 right-0 z-50 w-5/6 max-w-sm bg-[#0F172A] border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0 md:w-96
+        ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+      `}>
+        
+        {/* Cabecera */}
+        <div className="p-4 bg-[#1E293B] border-b border-gray-700 flex justify-between items-center text-white">
+          <h2 className="text-xl font-bold flex items-center gap-2">🛒 Pedido Actual</h2>
+          <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white text-2xl font-bold p-2">✕</button>
+        </div>
+
+        {/* Lista de productos */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <p>El carrito está vacío.</p>
+            </div>
+          ) : (
+            items.map(item => (
+              <div key={item.product.id} className="bg-[#1E293B] p-3 rounded-lg border border-gray-700 shadow-sm relative pr-10">
+                <button
+                  onClick={() => removeFromCart(item.product.id)}
+                  className="absolute top-2 right-2 text-red-400 hover:text-red-300 bg-red-900 bg-opacity-30 p-1 rounded transition-colors"
+                  title="Eliminar producto"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-white text-sm leading-tight pr-6">{item.product.name}</span>
+                  <span className="text-yellow-500 font-bold">${item.product.price.toLocaleString('es-AR')} c/u</span>
+                </div>
+                <div className="flex items-center gap-3 mt-3 bg-gray-900 p-1 rounded-md w-fit">
+                  <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white font-bold transition-colors">-</button>
+                  <span className="font-bold w-6 text-center text-white">{item.quantity}</span>
+                  <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white font-bold transition-colors">+</button>
+                </div>
+                <div className="mt-2 text-right text-gray-300 font-semibold text-sm">
+                  Subtotal: ${(item.product.price * item.quantity).toLocaleString('es-AR')}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Totales y Botones */}
+        <div className="p-4 bg-[#1E293B] border-t border-gray-700">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-gray-300 font-semibold">Total estim.:</span>
+            <span className="text-2xl font-bold text-white">${getTotal().toLocaleString('es-AR')}</span>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={sendWhatsApp}
+              disabled={items.length === 0}
+              className="w-full bg-[#128C7E] hover:bg-[#075E54] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              Enviar por WhatsApp
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={generatePDF}
+                disabled={items.length === 0}
+                className="w-1/2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Bajar PDF
+              </button>
+              <button
+                onClick={downloadExcel}
+                disabled={items.length === 0}
+                className="w-1/2 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Bajar Excel
+              </button>
+            </div>
+            {items.length > 0 && (
+              <button
+                onClick={clearCart}
+                className="w-full mt-2 text-red-400 hover:text-red-300 text-sm font-semibold underline py-1"
+              >
+                Vaciar Carrito
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </aside>
+    </React.Fragment>
   );
 };
