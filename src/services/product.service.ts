@@ -1,56 +1,68 @@
-import { supabase } from '../config/supabase'
-import type { Product } from '../models/product.model'
-import { productRepository } from '../repositories/product.repository'
+import { supabase } from '../config/supabase';
+import type { Product } from '../models/product.model';
 
 export const productService = {
+  
+  // TRAER PRODUCTOS
   async fetchProducts(): Promise<Product[]> {
-    try {
-      const products = await productRepository.getActiveProducts()
-      const productsWithImages = products.map(product => {
-        if (product.image_url) {
-          const { data } = supabase.storage.from('products').getPublicUrl(product.image_url)
-          product.image_url = data.publicUrl
-        }
-        return product;
-      });
-      return productsWithImages;
-    } catch (error) {
-      console.error("Error en productService:", error)
-      throw error 
-    }
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   },
 
-  async updateProduct(id: string, updates: Partial<Product>): Promise<void> {
-    try {
-      await productRepository.updateProduct(id, updates);
-    } catch (error) {
-      console.error("Error al actualizar producto:", error);
-      throw error;
-    }
+  // CREAR PRODUCTO (Usamos Partial para que TS no pida created_at ni id)
+  async createProduct(product: Partial<Product>): Promise<Product> {
+    const { data, error } = await supabase
+      .from('products')
+      .insert([product])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
-  async createProduct(product: Omit<Product, 'id' | 'created_at'>): Promise<void> {
-    await productRepository.createProduct(product);
+  // CREAR MULTIPLES PRODUCTOS (EXCEL)
+  async createProductsBulk(products: Partial<Product>[]): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from('products')
+      .insert(products)
+      .select();
+
+    if (error) throw error;
+    return data || [];
   },
 
-  async createProductsBulk(products: Omit<Product, 'id' | 'created_at'>[]): Promise<void> {
-    await productRepository.createProductsBulk(products);
+  // ACTUALIZAR PRODUCTO
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
-  // Subir imagen a Supabase Storage (VERSIÓN MEJORADA)
+
+  // SUBIR IMAGEN A SUPABASE
   async uploadImage(file: File): Promise<string | null> {
     try {
-      // 1. Usamos la fecha exacta (Date.now) en vez de números al azar para evitar errores en el link
-      // 2. Forzamos la extensión a minúsculas (ej: .PNG pasa a .png)
       const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `${Date.now()}.${fileExt}`;
 
-      // 3. Subimos el archivo avisándole explícitamente a Supabase qué tipo de archivo es
       const { error: uploadError } = await supabase.storage
         .from('productos')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false,
-          contentType: file.type // MUY IMPORTANTE: Le avisa al navegador que es una imagen real
+          contentType: file.type
         });
 
       if (uploadError) {
@@ -68,5 +80,4 @@ export const productService = {
       return null;
     }
   }
-  
-}
+};
