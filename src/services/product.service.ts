@@ -8,7 +8,7 @@ export const productService = {
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .order('category', { ascending: true })
+      // Solo dejamos el orden por nombre (A a la Z)
       .order('name', { ascending: true });
 
     if (error) throw error;
