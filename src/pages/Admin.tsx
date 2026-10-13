@@ -15,6 +15,9 @@ export const Admin = () => {
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editStock, setEditStock] = useState<number>(0);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  
+  // NUEVO: Estado para el buscador del admin
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', category: 'General', price: 0, stock: 100 });
@@ -119,6 +122,12 @@ export const Admin = () => {
     e.target.value = '';
   };
 
+  // NUEVO: Filtramos los productos según lo que escriba el Admin
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans pb-20">
       <div className="max-w-6xl mx-auto">
@@ -154,6 +163,7 @@ export const Admin = () => {
           ) : activeTab === 'productos' ? (
             
             <div className="flex flex-col gap-4">
+              
               {/* BARRA DE GESTIÓN (EXCEL / MANUAL) */}
               <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-4 rounded-lg border border-gray-700 gap-4">
                 <div className="text-white text-center md:text-left">
@@ -163,26 +173,31 @@ export const Admin = () => {
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                   <label className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-bold shadow-sm transition-colors cursor-pointer text-sm">
                     Subir Archivo Excel
-                    <input 
-                      type="file" 
-                      accept=".xlsx, .xls" 
-                      onChange={handleExcelUpload}
-                      className="hidden" 
-                    />
+                    <input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} className="hidden" />
                   </label>
-                  <button 
-                    onClick={() => setShowCreateModal(true)}
-                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-bold shadow-sm transition-colors text-sm"
-                  >
+                  <button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded font-bold shadow-sm transition-colors text-sm">
                     + Artículo Manual
                   </button>
                 </div>
               </div>
 
-              {/* LISTA DE PRODUCTOS - Vista Tarjetas (Móvil) / Tabla (PC) */}
+              {/* NUEVO: BUSCADOR DEL PANEL ADMIN */}
+              <div className="w-full mt-2">
+                <input
+                  type="text"
+                  placeholder="🔍 Buscar artículo para editar (ej: alfombra)..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-yellow-600 focus:outline-none shadow-sm text-gray-700 font-medium"
+                />
+              </div>
+
+              {/* LISTA DE PRODUCTOS - Vista Tarjetas (Móvil) */}
               <div className="block md:hidden space-y-4 mt-2">
-                {/* VISTA MÓVIL (Tarjetas) */}
-                {products.map(p => (
+                {filteredProducts.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">No se encontraron artículos.</p>
+                )}
+                {filteredProducts.map(p => (
                   <div key={p.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2">
                     <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{p.category}</span>
                     <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>
@@ -231,7 +246,10 @@ export const Admin = () => {
                     <tr><th className="p-4">Producto</th><th className="p-4">Categoría</th><th className="p-4 text-right">Precio</th><th className="p-4 text-center">Stock</th><th className="p-4 text-center">Acciones</th></tr>
                   </thead>
                   <tbody>
-                    {products.map(p => (
+                    {filteredProducts.length === 0 && (
+                      <tr><td colSpan={5} className="text-center text-gray-500 py-8">No se encontraron artículos.</td></tr>
+                    )}
+                    {filteredProducts.map(p => (
                       <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
                         <td className="p-4 font-semibold text-gray-800 w-1/3">{p.name}</td>
                         <td className="p-4 text-sm text-gray-500">{p.category}</td>
@@ -258,9 +276,8 @@ export const Admin = () => {
               </div>
             </div>
           ) : (
-            /* VISTA CLIENTES */
+            /* VISTA CLIENTES (Idéntica) */
             <div>
-               {/* Móvil: Tarjetas de Clientes */}
               <div className="block md:hidden space-y-4">
                 {profiles.map(user => (
                   <div key={user.id} className={`p-4 border rounded-lg shadow-sm ${user.is_active ? 'bg-white border-gray-200' : 'bg-red-50 border-red-200'}`}>
@@ -286,8 +303,6 @@ export const Admin = () => {
                   </div>
                 ))}
               </div>
-
-              {/* PC: Tabla de Clientes */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-max">
                   <thead className="bg-gray-800 text-white">
@@ -314,7 +329,7 @@ export const Admin = () => {
         </div>
       </div>
 
-      {/* ---------------- MODAL DE CREACIÓN MANUAL ---------------- */}
+      {/* MODAL MANUAL */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
@@ -328,12 +343,10 @@ export const Admin = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del producto</label>
                 <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" placeholder="Ej: Alfombra Goma" />
               </div>
-              
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label>
                 <input type="text" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" placeholder="Ej: General" />
               </div>
-
               <div className="flex gap-4">
                 <div className="w-1/2">
                   <label className="block text-sm font-bold text-gray-700 mb-1">Precio ($)</label>
@@ -344,11 +357,8 @@ export const Admin = () => {
                   <input type="number" value={newProduct.stock || ''} onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
                 </div>
               </div>
-
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 mt-4 border-t border-gray-200">
-                <button onClick={() => setShowCreateModal(false)} className="w-full sm:w-auto px-5 py-2 rounded text-gray-600 font-bold hover:bg-gray-100 border border-gray-300 sm:border-none">
-                  Cancelar
-                </button>
+                <button onClick={() => setShowCreateModal(false)} className="w-full sm:w-auto px-5 py-2 rounded text-gray-600 font-bold hover:bg-gray-100 border border-gray-300 sm:border-none">Cancelar</button>
                 <button onClick={handleSaveNewProduct} disabled={isSaving} className="w-full sm:w-auto px-5 py-2 rounded bg-green-600 text-white font-bold hover:bg-green-700 disabled:bg-gray-400">
                   {isSaving ? 'Guardando...' : 'Guardar Producto'}
                 </button>

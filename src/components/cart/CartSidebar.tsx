@@ -1,25 +1,109 @@
 import React, { useState } from 'react';
 import { useCart } from '../../context/CartContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export const CartSidebar = () => {
   const { items, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
 
+  // ---------- FUNCIÓN: DESCARGAR PDF ----------
   const generatePDF = () => {
-    alert("Próximamente: Generar PDF");
+    if (items.length === 0) return;
+
+    const doc = new jsPDF();
+    
+    // Título y fecha
+    doc.setFontSize(18);
+    doc.text("Pedido - SA Scotto", 14, 22);
+    
+    doc.setFontSize(11);
+    const date = new Date().toLocaleDateString('es-AR');
+    doc.text(`Fecha: ${date}`, 14, 30);
+
+    // Armamos los datos para la tabla
+    const tableColumn = ["Producto", "Cantidad", "Precio Unitario", "Subtotal"];
+    const tableRows: any[] = [];
+
+    items.forEach(item => {
+      const productData = [
+        item.product.name,
+        item.quantity,
+        `$${item.product.price.toLocaleString('es-AR')}`,
+        `$${(item.product.price * item.quantity).toLocaleString('es-AR')}`
+      ];
+      tableRows.push(productData);
+    });
+
+    // Dibujamos la tabla usando el plugin autotable
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 40,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42] } // Color azul oscuro de la app
+    });
+
+    // Total al final
+    const finalY = (doc as any).lastAutoTable.finalY || 40;
+    doc.setFontSize(14);
+    doc.text(`TOTAL ESTIMADO: $${getTotal().toLocaleString('es-AR')}`, 14, finalY + 15);
+
+    doc.save("pedido_scotto.pdf");
   };
 
-  const sendWhatsApp = () => {
-    alert("Próximamente: Enviar por WhatsApp");
-  };
-
+  // ---------- FUNCIÓN: DESCARGAR EXCEL ----------
   const downloadExcel = () => {
-    alert("Próximamente: Bajar Excel");
+    if (items.length === 0) return;
+
+    // Armamos un array de objetos (cada objeto es una fila del Excel)
+    const excelData = items.map(item => ({
+      Producto: item.product.name,
+      Categoría: item.product.category,
+      Cantidad: item.quantity,
+      'Precio Unit.': item.product.price,
+      Subtotal: item.product.price * item.quantity
+    }));
+
+    // Agregamos una fila en blanco y luego la del Total General
+    excelData.push({ Producto: '', Categoría: '', Cantidad: 0, 'Precio Unit.': 0, Subtotal: 0 });
+    excelData.push({
+      Producto: 'TOTAL GENERAL',
+      Categoría: '',
+      Cantidad: 0,
+      'Precio Unit.': 0,
+      Subtotal: getTotal()
+    });
+
+    // Creamos el archivo Excel
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
+
+    // Lo descargamos
+    XLSX.writeFile(workbook, "pedido_scotto.xlsx");
+  };
+
+  // ---------- FUNCIÓN: ENVIAR WHATSAPP ----------
+  const sendWhatsApp = () => {
+    const phoneNumber = "5493512254595"; 
+    
+    let message = "Hola SA Scotto! Quiero hacer el siguiente pedido:\n\n";
+
+    items.forEach(item => {
+      message += `- ${item.quantity}x ${item.product.name} ($${item.product.price.toLocaleString('es-AR')} c/u)\n`;
+    });
+
+    message += `\n*Total estimado: $${getTotal().toLocaleString('es-AR')}*\n\n`;
+    message += "Por favor, confírmenme stock y métodos de pago. ¡Gracias!";
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
   };
 
   return (
     <React.Fragment>
-      {/* Botón flotante SOLO visible en celular */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -29,7 +113,6 @@ export const CartSidebar = () => {
         </button>
       )}
 
-      {/* Fondo oscuro para cuando se abre en celular */}
       {isOpen && (
         <div 
           className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
@@ -37,20 +120,17 @@ export const CartSidebar = () => {
         />
       )}
 
-      {/* Contenedor del carrito */}
       <div className={`
         fixed inset-y-0 right-0 z-50 w-5/6 max-w-sm bg-[#0F172A] border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out
         md:relative md:translate-x-0 md:w-96
         ${isOpen ? 'translate-x-0' : 'translate-x-full'}
       `}>
         
-        {/* Cabecera */}
         <div className="p-4 bg-[#1E293B] border-b border-gray-700 flex justify-between items-center text-white">
           <h2 className="text-xl font-bold flex items-center gap-2">🛒 Pedido Actual</h2>
           <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white text-2xl font-bold p-2">✕</button>
         </div>
 
-        {/* Lista de productos */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -85,7 +165,6 @@ export const CartSidebar = () => {
           )}
         </div>
 
-        {/* Totales y Botones */}
         <div className="p-4 bg-[#1E293B] border-t border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <span className="text-gray-300 font-semibold">Total estim.:</span>
