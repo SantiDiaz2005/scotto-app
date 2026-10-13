@@ -18,7 +18,7 @@ export const Admin = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   
-  // PAGINACIÓN ADMIN
+  // PAGINACIÓN ADMIN (En 50 como el Catálogo)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
@@ -46,7 +46,6 @@ export const Admin = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  // Resetea a la página 1 cuando se busca algo
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   const startEditing = (product: Product) => {
@@ -61,7 +60,6 @@ export const Admin = () => {
     loadData();
   };
 
-  // Función exclusiva para cambiar la imagen de un producto existente
   const handleImageChange = async (productId: string, file: File) => {
     setIsSaving(true);
     const imageUrl = await productService.uploadImage(file);
@@ -154,7 +152,6 @@ export const Admin = () => {
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Cálculos Paginación
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
@@ -196,7 +193,6 @@ export const Admin = () => {
             
             <div className="flex flex-col gap-4">
               
-              {/* BARRA DE GESTIÓN */}
               <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-4 rounded-lg border border-gray-700 gap-4">
                 <div className="text-white text-center md:text-left">
                   <h3 className="font-bold text-lg flex items-center justify-center md:justify-start gap-2">📄 Carga de Catálogo</h3>
@@ -213,7 +209,6 @@ export const Admin = () => {
                 </div>
               </div>
 
-              {/* BUSCADOR */}
               <div className="w-full mt-2">
                 <input
                   type="text"
@@ -224,21 +219,25 @@ export const Admin = () => {
                 />
               </div>
 
-              {/* VISTA MÓVIL (Tarjetas con paginación) */}
+              {/* VISTA MÓVIL */}
               <div className="block md:hidden space-y-4 mt-2">
                 {currentProducts.map(p => (
                   <div key={p.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2">
                     <div className="flex justify-between items-start">
                       <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{p.category}</span>
-                      {/* FOTO MINIATURA EN MÓVIL */}
-                      {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="w-10 h-10 object-cover rounded border" />
-                      ) : (
-                        <label className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded cursor-pointer font-bold">
-                          + FOTO
-                          <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
-                        </label>
-                      )}
+                      
+                      {/* FOTO MINIATURA EN MÓVIL CLICKEABLE */}
+                      <label className="cursor-pointer relative block w-12 h-12 flex-shrink-0" title="Tocar para cambiar foto">
+                        {p.image_url ? (
+                          <img src={p.image_url} alt={p.name} className="w-12 h-12 object-cover rounded border" />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-200 text-gray-600 rounded border flex items-center justify-center text-[10px] font-bold">
+                            + FOTO
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
+                      </label>
+
                     </div>
                     <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>
                     
@@ -279,7 +278,7 @@ export const Admin = () => {
                 ))}
               </div>
 
-              {/* VISTA ESCRITORIO (Tabla con Paginación e Imágenes) */}
+              {/* VISTA ESCRITORIO */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-max mt-2">
                   <thead className="bg-gray-800 text-white">
@@ -295,16 +294,21 @@ export const Admin = () => {
                   <tbody>
                     {currentProducts.map(p => (
                       <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
+                        
+                        {/* CELDA DE LA FOTO (AHORA ES CLICKLEABLE SIEMPRE) */}
                         <td className="p-4">
-                          {p.image_url ? (
-                            <img src={p.image_url} alt="Prod" className="w-12 h-12 object-cover rounded border" />
-                          ) : (
-                            <label className="flex items-center justify-center w-12 h-12 bg-gray-200 rounded border cursor-pointer hover:bg-gray-300 text-xs text-gray-500 font-bold text-center leading-tight">
-                              Subir
-                              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
-                            </label>
-                          )}
+                          <label className="cursor-pointer relative block w-12 h-12 group hover:opacity-80 transition-opacity" title="Clic para cambiar foto">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt="Prod" className="w-12 h-12 object-cover rounded border" />
+                            ) : (
+                              <div className="flex items-center justify-center w-12 h-12 bg-gray-200 rounded border text-xs text-gray-500 font-bold text-center leading-tight">
+                                Subir
+                              </div>
+                            )}
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
+                          </label>
                         </td>
+
                         <td className="p-4 font-semibold text-gray-800 w-1/3">{p.name}</td>
                         <td className="p-4 text-sm text-gray-500">{p.category}</td>
                         {editingId === p.id ? (
@@ -329,7 +333,6 @@ export const Admin = () => {
                 </table>
               </div>
 
-              {/* CONTROLES DE PAGINACIÓN ADMIN */}
               {totalPages > 1 && (
                 <div className="flex justify-between items-center bg-gray-50 p-3 rounded border">
                   <span className="text-sm text-gray-600 font-bold">
@@ -344,10 +347,8 @@ export const Admin = () => {
 
             </div>
           ) : (
-            /* VISTA CLIENTES */
             <div>
-               {/* ... (código de clientes se mantiene igual) ... */}
-               <div className="block md:hidden space-y-4">
+              <div className="block md:hidden space-y-4">
                 {profiles.map(user => (
                   <div key={user.id} className={`p-4 border rounded-lg shadow-sm ${user.is_active ? 'bg-white border-gray-200' : 'bg-red-50 border-red-200'}`}>
                     <div className="flex justify-between items-start mb-2">
@@ -398,7 +399,6 @@ export const Admin = () => {
         </div>
       </div>
 
-      {/* MODAL MANUAL CON FOTO */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
@@ -429,7 +429,6 @@ export const Admin = () => {
                 </div>
               </div>
 
-              {/* INPUT DE FOTO NUEVA */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Subir Foto (Opcional)</label>
                 <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100" />
