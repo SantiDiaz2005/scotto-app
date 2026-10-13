@@ -13,7 +13,7 @@ export const Catalog = () => {
   
   // Estados para Paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 50;
   
   const navigate = useNavigate();
 

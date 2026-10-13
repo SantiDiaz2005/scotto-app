@@ -36,22 +36,31 @@ export const productService = {
   async createProductsBulk(products: Omit<Product, 'id' | 'created_at'>[]): Promise<void> {
     await productRepository.createProductsBulk(products);
   },
-  // Subir imagen a Supabase Storage
+  // Subir imagen a Supabase Storage (VERSIÓN MEJORADA)
   async uploadImage(file: File): Promise<string | null> {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      // 1. Usamos la fecha exacta (Date.now) en vez de números al azar para evitar errores en el link
+      // 2. Forzamos la extensión a minúsculas (ej: .PNG pasa a .png)
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${Date.now()}.${fileExt}`;
 
+      // 3. Subimos el archivo avisándole explícitamente a Supabase qué tipo de archivo es
       const { error: uploadError } = await supabase.storage
         .from('productos')
-        .upload(filePath, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type // MUY IMPORTANTE: Le avisa al navegador que es una imagen real
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Error detallado de Supabase:", uploadError);
+        throw uploadError;
+      }
 
       const { data } = supabase.storage
         .from('productos')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
       return data.publicUrl;
     } catch (error) {
@@ -59,4 +68,5 @@ export const productService = {
       return null;
     }
   }
+  
 }
