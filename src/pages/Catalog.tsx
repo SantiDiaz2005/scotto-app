@@ -56,7 +56,7 @@ export const Catalog = () => {
     <div className="h-screen flex flex-col bg-gray-100 font-sans overflow-hidden">
       
       {/* HEADER (Mejorado para celulares) */}
-      <header className="bg-black text-white p-3 md:p-4 shadow-md z-20 flex items-center justify-between border-b border-yellow-600">
+      <header className="bg-black text-white p-3 md:p-4 shadow-md z-[60] flex items-center justify-between border-b border-yellow-600">
         <div className="w-1/4 md:w-1/3 flex items-center">
           <img src="/logo.png" alt="SA Scotto" className="h-8 md:h-12 w-auto object-contain" />
         </div>
