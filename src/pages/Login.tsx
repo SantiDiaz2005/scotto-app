@@ -82,7 +82,7 @@ export const Login = () => {
     <div className="min-h-screen bg-black flex flex-col justify-center items-center p-4">
       <div className="max-w-md w-full bg-gray-900 rounded-xl shadow-2xl p-8 border border-gray-800">
         <div className="flex justify-center mb-6">
-          <img src="/logo.png" alt="SA Scotto Accesorios" className="h-24 object-contain" />
+          <img src="/logo.png" alt="SA Scotto Accesorios" className="h-40 object-contain" />
         </div>
         
         <h2 className="text-center text-white text-xl font-bold mb-6">
