@@ -35,5 +35,28 @@ export const productService = {
 
   async createProductsBulk(products: Omit<Product, 'id' | 'created_at'>[]): Promise<void> {
     await productRepository.createProductsBulk(products);
+  },
+  // Subir imagen a Supabase Storage
+  async uploadImage(file: File): Promise<string | null> {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('productos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('productos')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error subiendo imagen:', error);
+      return null;
+    }
   }
 }

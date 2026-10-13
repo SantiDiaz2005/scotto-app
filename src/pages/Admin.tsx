@@ -16,11 +16,16 @@ export const Admin = () => {
   const [editStock, setEditStock] = useState<number>(0);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   
-  // NUEVO: Estado para el buscador del admin
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // PAGINACIÓN ADMIN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
+  // IMÁGENES Y MODAL
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', category: 'General', price: 0, stock: 100 });
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const navigate = useNavigate();
@@ -41,6 +46,9 @@ export const Admin = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  // Resetea a la página 1 cuando se busca algo
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+
   const startEditing = (product: Product) => {
     setEditingId(product.id);
     setEditPrice(product.price);
@@ -51,6 +59,19 @@ export const Admin = () => {
     await productService.updateProduct(id, { price: editPrice, stock: editStock });
     setEditingId(null);
     loadData();
+  };
+
+  // Función exclusiva para cambiar la imagen de un producto existente
+  const handleImageChange = async (productId: string, file: File) => {
+    setIsSaving(true);
+    const imageUrl = await productService.uploadImage(file);
+    if (imageUrl) {
+      await productService.updateProduct(productId, { image_url: imageUrl });
+      loadData();
+    } else {
+      alert("Error al subir la imagen");
+    }
+    setIsSaving(false);
   };
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
@@ -64,6 +85,11 @@ export const Admin = () => {
     }
     setIsSaving(true);
     try {
+      let imageUrl = null;
+      if (imageFile) {
+        imageUrl = await productService.uploadImage(imageFile);
+      }
+
       await productService.createProduct({
         name: newProduct.name,
         category: newProduct.category,
@@ -71,10 +97,11 @@ export const Admin = () => {
         stock: newProduct.stock,
         is_active: true,
         description: '',
-        image_url: null
+        image_url: imageUrl
       });
       setShowCreateModal(false);
       setNewProduct({ name: '', category: 'General', price: 0, stock: 100 });
+      setImageFile(null);
       loadData();
     } catch (error) {
       alert("Error al crear producto.");
@@ -109,11 +136,11 @@ export const Admin = () => {
         }));
 
         await productService.createProductsBulk(productsToAdd);
-        alert(`¡Éxito! Se importaron ${productsToAdd.length} productos nuevos desde el Excel.`);
+        alert(`¡Éxito! Se importaron ${productsToAdd.length} productos nuevos.`);
         loadData();
       } catch (err) {
         console.error(err);
-        alert("Error al procesar el Excel. Asegurate de que la primera hoja tenga las columnas correctas.");
+        alert("Error al procesar el Excel.");
       } finally {
         setLoading(false);
       }
@@ -122,11 +149,16 @@ export const Admin = () => {
     e.target.value = '';
   };
 
-  // NUEVO: Filtramos los productos según lo que escriba el Admin
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Cálculos Paginación
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans pb-20">
@@ -164,7 +196,7 @@ export const Admin = () => {
             
             <div className="flex flex-col gap-4">
               
-              {/* BARRA DE GESTIÓN (EXCEL / MANUAL) */}
+              {/* BARRA DE GESTIÓN */}
               <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-4 rounded-lg border border-gray-700 gap-4">
                 <div className="text-white text-center md:text-left">
                   <h3 className="font-bold text-lg flex items-center justify-center md:justify-start gap-2">📄 Carga de Catálogo</h3>
@@ -181,7 +213,7 @@ export const Admin = () => {
                 </div>
               </div>
 
-              {/* NUEVO: BUSCADOR DEL PANEL ADMIN */}
+              {/* BUSCADOR */}
               <div className="w-full mt-2">
                 <input
                   type="text"
@@ -192,14 +224,22 @@ export const Admin = () => {
                 />
               </div>
 
-              {/* LISTA DE PRODUCTOS - Vista Tarjetas (Móvil) */}
+              {/* VISTA MÓVIL (Tarjetas con paginación) */}
               <div className="block md:hidden space-y-4 mt-2">
-                {filteredProducts.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">No se encontraron artículos.</p>
-                )}
-                {filteredProducts.map(p => (
+                {currentProducts.map(p => (
                   <div key={p.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2">
-                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{p.category}</span>
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{p.category}</span>
+                      {/* FOTO MINIATURA EN MÓVIL */}
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="w-10 h-10 object-cover rounded border" />
+                      ) : (
+                        <label className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded cursor-pointer font-bold">
+                          + FOTO
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
+                        </label>
+                      )}
+                    </div>
                     <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>
                     
                     {editingId === p.id ? (
@@ -239,18 +279,32 @@ export const Admin = () => {
                 ))}
               </div>
 
-              {/* VISTA ESCRITORIO (Tabla original) */}
+              {/* VISTA ESCRITORIO (Tabla con Paginación e Imágenes) */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-max mt-2">
                   <thead className="bg-gray-800 text-white">
-                    <tr><th className="p-4">Producto</th><th className="p-4">Categoría</th><th className="p-4 text-right">Precio</th><th className="p-4 text-center">Stock</th><th className="p-4 text-center">Acciones</th></tr>
+                    <tr>
+                      <th className="p-4 w-16">Foto</th>
+                      <th className="p-4">Producto</th>
+                      <th className="p-4">Categoría</th>
+                      <th className="p-4 text-right">Precio</th>
+                      <th className="p-4 text-center">Stock</th>
+                      <th className="p-4 text-center">Acciones</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.length === 0 && (
-                      <tr><td colSpan={5} className="text-center text-gray-500 py-8">No se encontraron artículos.</td></tr>
-                    )}
-                    {filteredProducts.map(p => (
+                    {currentProducts.map(p => (
                       <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
+                        <td className="p-4">
+                          {p.image_url ? (
+                            <img src={p.image_url} alt="Prod" className="w-12 h-12 object-cover rounded border" />
+                          ) : (
+                            <label className="flex items-center justify-center w-12 h-12 bg-gray-200 rounded border cursor-pointer hover:bg-gray-300 text-xs text-gray-500 font-bold text-center leading-tight">
+                              Subir
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
+                            </label>
+                          )}
+                        </td>
                         <td className="p-4 font-semibold text-gray-800 w-1/3">{p.name}</td>
                         <td className="p-4 text-sm text-gray-500">{p.category}</td>
                         {editingId === p.id ? (
@@ -274,11 +328,26 @@ export const Admin = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* CONTROLES DE PAGINACIÓN ADMIN */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center bg-gray-50 p-3 rounded border">
+                  <span className="text-sm text-gray-600 font-bold">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-50">Anterior</button>
+                    <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-50">Siguiente</button>
+                  </div>
+                </div>
+              )}
+
             </div>
           ) : (
-            /* VISTA CLIENTES (Idéntica) */
+            /* VISTA CLIENTES */
             <div>
-              <div className="block md:hidden space-y-4">
+               {/* ... (código de clientes se mantiene igual) ... */}
+               <div className="block md:hidden space-y-4">
                 {profiles.map(user => (
                   <div key={user.id} className={`p-4 border rounded-lg shadow-sm ${user.is_active ? 'bg-white border-gray-200' : 'bg-red-50 border-red-200'}`}>
                     <div className="flex justify-between items-start mb-2">
@@ -329,7 +398,7 @@ export const Admin = () => {
         </div>
       </div>
 
-      {/* MODAL MANUAL */}
+      {/* MODAL MANUAL CON FOTO */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
@@ -341,12 +410,14 @@ export const Admin = () => {
             <div className="p-4 md:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del producto</label>
-                <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" placeholder="Ej: Alfombra Goma" />
+                <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
               </div>
+              
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label>
-                <input type="text" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" placeholder="Ej: General" />
+                <input type="text" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
               </div>
+
               <div className="flex gap-4">
                 <div className="w-1/2">
                   <label className="block text-sm font-bold text-gray-700 mb-1">Precio ($)</label>
@@ -357,6 +428,13 @@ export const Admin = () => {
                   <input type="number" value={newProduct.stock || ''} onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
                 </div>
               </div>
+
+              {/* INPUT DE FOTO NUEVA */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subir Foto (Opcional)</label>
+                <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100" />
+              </div>
+
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 mt-4 border-t border-gray-200">
                 <button onClick={() => setShowCreateModal(false)} className="w-full sm:w-auto px-5 py-2 rounded text-gray-600 font-bold hover:bg-gray-100 border border-gray-300 sm:border-none">Cancelar</button>
                 <button onClick={handleSaveNewProduct} disabled={isSaving} className="w-full sm:w-auto px-5 py-2 rounded bg-green-600 text-white font-bold hover:bg-green-700 disabled:bg-gray-400">

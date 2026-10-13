@@ -108,26 +108,31 @@ export const Catalog = () => {
 
       {/* CUERPO PRINCIPAL */}
       <div className="flex flex-1 overflow-hidden relative">
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 relative">
-          <div className="max-w-4xl mx-auto pb-20">
-            {loading ? (
-              <p className="text-center text-gray-500 mt-10 font-medium">Cargando catálogo...</p>
-            ) : filteredProducts.length === 0 ? (
-              <div className="text-center mt-10">
-                <p className="text-gray-500 text-lg">No se encontraron productos.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {currentProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Contenedor Izquierdo: Catálogo y Paginación */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
+          
+          {/* Zona Scrolleable de Productos */}
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="max-w-4xl mx-auto">
+              {loading ? (
+                <p className="text-center text-gray-500 mt-10 font-medium">Cargando catálogo...</p>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center mt-10">
+                  <p className="text-gray-500 text-lg">No se encontraron productos.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {currentProducts.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </main>
 
-          {/* BARRA DE PAGINACIÓN */}
+          {/* BARRA DE PAGINACIÓN FIJA ABAJO */}
           {!loading && totalPages > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 md:p-4 flex justify-center items-center gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+            <div className="bg-white border-t border-gray-200 p-3 flex justify-center items-center gap-4 shadow-md z-10">
               <span className="text-xs md:text-sm text-gray-600 font-semibold hidden sm:block">
                 Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProducts.length)} de {filteredProducts.length}
               </span>
@@ -152,7 +157,7 @@ export const Catalog = () => {
               </div>
             </div>
           )}
-        </main>
+        </div>
         
         {/* CARRITO LATERAL */}
         <CartSidebar />
