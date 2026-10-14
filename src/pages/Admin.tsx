@@ -5,6 +5,7 @@ import type { Product } from '../models/product.model';
 import type { UserProfile } from '../models/user.model';
 import { productService } from '../services/product.service';
 import { authService } from '../services/auth.service';
+import { supabase } from '../config/supabase';
 
 export const Admin = () => {
   const [activeTab, setActiveTab] = useState<'productos' | 'clientes'>('productos');
@@ -14,21 +15,36 @@ export const Admin = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editStock, setEditStock] = useState<number>(0);
+  const [editDescription, setEditDescription] = useState<string>(''); // NUEVO: Estado para descripción
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // PAGINACIÓN ADMIN (En 50 como el Catálogo)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
-  // IMÁGENES Y MODAL
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: '', category: 'General', price: 0, stock: 100 });
+  const [newProduct, setNewProduct] = useState({ name: '', category: 'General', price: 0, stock: 100, description: '' });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const navigate = useNavigate();
+
+  // NUEVO: Control de Seguridad (Candado)
+  useEffect(() => {
+    const checkSecurity = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Si no hay sesión, lo pateamos al login instantáneamente
+      if (!session) {
+        navigate('/login');
+        return;
+      }
+      // Si está logueado, cargamos los datos
+      loadData();
+    };
+    
+    checkSecurity();
+  }, [navigate]);
 
   const loadData = async () => {
     setLoading(true);
@@ -44,18 +60,21 @@ export const Admin = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
-
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   const startEditing = (product: Product) => {
     setEditingId(product.id);
     setEditPrice(product.price);
     setEditStock(product.stock || 0);
+    setEditDescription(product.description || ''); // Cargamos la descripción actual
   };
 
   const saveChanges = async (id: string) => {
-    await productService.updateProduct(id, { price: editPrice, stock: editStock });
+    await productService.updateProduct(id, { 
+      price: editPrice, 
+      stock: editStock,
+      description: editDescription // Guardamos la nueva descripción
+    });
     setEditingId(null);
     loadData();
   };
@@ -93,12 +112,12 @@ export const Admin = () => {
         category: newProduct.category,
         price: newProduct.price,
         stock: newProduct.stock,
+        description: newProduct.description,
         is_active: true,
-        description: '',
         image_url: imageUrl
       });
       setShowCreateModal(false);
-      setNewProduct({ name: '', category: 'General', price: 0, stock: 100 });
+      setNewProduct({ name: '', category: 'General', price: 0, stock: 100, description: '' });
       setImageFile(null);
       loadData();
     } catch (error) {
@@ -129,7 +148,7 @@ export const Admin = () => {
           price: Number(row['Precio']) || Number(row['Costo']) || 0,
           stock: Number(row['Stock']) || Number(row['Cantidad']) || 100,
           is_active: true,
-          description: '',
+          description: row['Detalle'] || '',
           image_url: null
         }));
 
@@ -161,18 +180,19 @@ export const Admin = () => {
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans pb-20">
       <div className="max-w-6xl mx-auto">
         
-        {/* CABECERA */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 bg-gray-900 p-4 rounded-lg shadow-md text-white gap-4">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3 w-full justify-center md:justify-start">
             <img src="/logo.png" alt="SA Scotto" className="h-8 md:h-10 bg-black p-1 rounded border border-yellow-600" />
             Panel de Control
           </h1>
-          <button onClick={() => navigate('/login')} className="w-full md:w-auto bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors shadow-sm text-white">
+          <button onClick={async () => {
+            await supabase.auth.signOut();
+            navigate('/login');
+          }} className="w-full md:w-auto bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors shadow-sm text-white">
             Cerrar Sesión
           </button>
         </div>
 
-        {/* PESTAÑAS */}
         <div className="flex gap-2 md:gap-4 mb-4">
           <button onClick={() => setActiveTab('productos')} className={`flex-1 md:flex-none px-4 md:px-6 py-2 font-bold rounded-t-lg text-sm md:text-base ${activeTab === 'productos' ? 'bg-white text-gray-900 shadow-sm' : 'bg-gray-300 text-gray-600'}`}>
             📦 Productos
@@ -225,8 +245,6 @@ export const Admin = () => {
                   <div key={p.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-2">
                     <div className="flex justify-between items-start">
                       <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">{p.category}</span>
-                      
-                      {/* FOTO MINIATURA EN MÓVIL CLICKEABLE */}
                       <label className="cursor-pointer relative block w-12 h-12 flex-shrink-0" title="Tocar para cambiar foto">
                         {p.image_url ? (
                           <img src={p.image_url} alt={p.name} className="w-12 h-12 object-cover rounded border" />
@@ -237,12 +255,22 @@ export const Admin = () => {
                         )}
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
                       </label>
-
                     </div>
                     <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>
+                    {p.description && !editingId && <p className="text-sm text-gray-600 italic">{p.description}</p>}
                     
                     {editingId === p.id ? (
                       <div className="flex flex-col gap-3 mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-bold text-gray-600">Descripción:</span>
+                          <textarea 
+                            value={editDescription} 
+                            onChange={e => setEditDescription(e.target.value)} 
+                            className="w-full p-2 border border-gray-400 rounded text-sm bg-white" 
+                            rows={2}
+                            placeholder="Detalles del producto..."
+                          />
+                        </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-bold text-gray-600">Precio:</span>
                           <div className="flex items-center text-gray-900 font-bold">
@@ -295,7 +323,6 @@ export const Admin = () => {
                     {currentProducts.map(p => (
                       <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
                         
-                        {/* CELDA DE LA FOTO (AHORA ES CLICKLEABLE SIEMPRE) */}
                         <td className="p-4">
                           <label className="cursor-pointer relative block w-12 h-12 group hover:opacity-80 transition-opacity" title="Clic para cambiar foto">
                             {p.image_url ? (
@@ -309,10 +336,20 @@ export const Admin = () => {
                           </label>
                         </td>
 
-                        <td className="p-4 font-semibold text-gray-800 w-1/3">{p.name}</td>
-                        <td className="p-4 text-sm text-gray-500">{p.category}</td>
                         {editingId === p.id ? (
                           <>
+                            {/* EN MODO EDICIÓN, MOSTRAMOS LA CAJA DE DESCRIPCIÓN */}
+                            <td className="p-4 w-1/3">
+                              <p className="font-semibold text-gray-800">{p.name}</p>
+                              <input 
+                                type="text" 
+                                value={editDescription} 
+                                onChange={e => setEditDescription(e.target.value)} 
+                                placeholder="Agregar descripción o detalle..." 
+                                className="w-full mt-2 p-1.5 border border-gray-400 rounded text-sm" 
+                              />
+                            </td>
+                            <td className="p-4 text-sm text-gray-500">{p.category}</td>
                             <td className="p-4 text-right">$<input type="number" value={editPrice} onChange={e => setEditPrice(Number(e.target.value))} className="w-24 p-1 border border-gray-400 rounded text-right ml-1" /></td>
                             <td className="p-4 text-center"><input type="number" value={editStock} onChange={e => setEditStock(Number(e.target.value))} className="w-20 p-1 border border-gray-400 rounded text-center" /> unid.</td>
                             <td className="p-4 flex justify-center gap-2">
@@ -322,6 +359,11 @@ export const Admin = () => {
                           </>
                         ) : (
                           <>
+                            <td className="p-4 w-1/3">
+                              <p className="font-semibold text-gray-800">{p.name}</p>
+                              {p.description && <p className="text-xs text-gray-500 mt-1 italic">{p.description}</p>}
+                            </td>
+                            <td className="p-4 text-sm text-gray-500">{p.category}</td>
                             <td className="p-4 text-right font-bold text-green-700">${p.price.toLocaleString('es-AR')}</td>
                             <td className="p-4 text-center"><span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.stock} unid.</span></td>
                             <td className="p-4 flex justify-center"><button onClick={() => startEditing(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded text-sm font-semibold shadow-sm transition-colors">✏️ Editar</button></td>
@@ -348,6 +390,7 @@ export const Admin = () => {
             </div>
           ) : (
             <div>
+              {/* LISTA CLIENTES (Igual) */}
               <div className="block md:hidden space-y-4">
                 {profiles.map(user => (
                   <div key={user.id} className={`p-4 border rounded-lg shadow-sm ${user.is_active ? 'bg-white border-gray-200' : 'bg-red-50 border-red-200'}`}>
@@ -364,10 +407,7 @@ export const Admin = () => {
                       <p className="text-sm text-gray-700">{user.email}</p>
                       <p className="text-xs text-gray-500">Tel: {user.phone}</p>
                     </div>
-                    <button 
-                      onClick={() => toggleStatus(user.id, user.is_active)} 
-                      className={`w-full py-2 rounded text-sm font-bold text-white ${user.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
-                    >
+                    <button onClick={() => toggleStatus(user.id, user.is_active)} className={`w-full py-2 rounded text-sm font-bold text-white ${user.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>
                       {user.is_active ? 'Desactivar Usuario' : 'Activar Usuario'}
                     </button>
                   </div>
@@ -416,6 +456,12 @@ export const Admin = () => {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label>
                 <input type="text" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
+              </div>
+
+              {/* NUEVO: INPUT PARA DESCRIPCIÓN AL CREAR */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Descripción (Opcional)</label>
+                <input type="text" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} placeholder="Detalle del repuesto..." className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
               </div>
 
               <div className="flex gap-4">
