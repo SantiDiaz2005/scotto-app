@@ -13,11 +13,14 @@ export const Admin = () => {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // ESTADOS DE EDICIÓN
+  const [editName, setEditName] = useState<string>(''); // NUEVO: Estado para el nombre
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editStock, setEditStock] = useState<number>(0);
-  const [editDescription, setEditDescription] = useState<string>(''); // NUEVO: Estado para descripción
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [editDescription, setEditDescription] = useState<string>(''); 
   
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
@@ -29,20 +32,15 @@ export const Admin = () => {
 
   const navigate = useNavigate();
 
-  // NUEVO: Control de Seguridad (Candado)
   useEffect(() => {
     const checkSecurity = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      // Si no hay sesión, lo pateamos al login instantáneamente
       if (!session) {
         navigate('/login');
         return;
       }
-      // Si está logueado, cargamos los datos
       loadData();
     };
-    
     checkSecurity();
   }, [navigate]);
 
@@ -64,16 +62,18 @@ export const Admin = () => {
 
   const startEditing = (product: Product) => {
     setEditingId(product.id);
+    setEditName(product.name); // Cargamos el nombre actual
     setEditPrice(product.price);
     setEditStock(product.stock || 0);
-    setEditDescription(product.description || ''); // Cargamos la descripción actual
+    setEditDescription(product.description || ''); 
   };
 
   const saveChanges = async (id: string) => {
     await productService.updateProduct(id, { 
+      name: editName, // Guardamos el nuevo nombre
       price: editPrice, 
       stock: editStock,
-      description: editDescription // Guardamos la nueva descripción
+      description: editDescription 
     });
     setEditingId(null);
     loadData();
@@ -256,11 +256,23 @@ export const Admin = () => {
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && handleImageChange(p.id, e.target.files[0])} />
                       </label>
                     </div>
-                    <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>
+                    
+                    {/* MOSTRAMOS EL NOMBRE COMO TEXTO SI NO EDITA */}
+                    {!editingId && <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>}
                     {p.description && !editingId && <p className="text-sm text-gray-600 italic">{p.description}</p>}
                     
                     {editingId === p.id ? (
                       <div className="flex flex-col gap-3 mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        {/* NUEVO INPUT PARA EL NOMBRE EN CELULAR */}
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-bold text-gray-600">Nombre del artículo:</span>
+                          <input 
+                            type="text" 
+                            value={editName} 
+                            onChange={e => setEditName(e.target.value)} 
+                            className="w-full p-2 border border-gray-400 rounded text-sm bg-white font-bold text-gray-900" 
+                          />
+                        </div>
                         <div className="flex flex-col gap-1">
                           <span className="text-sm font-bold text-gray-600">Descripción:</span>
                           <textarea 
@@ -268,7 +280,6 @@ export const Admin = () => {
                             onChange={e => setEditDescription(e.target.value)} 
                             className="w-full p-2 border border-gray-400 rounded text-sm bg-white" 
                             rows={2}
-                            placeholder="Detalles del producto..."
                           />
                         </div>
                         <div className="flex justify-between items-center">
@@ -338,15 +349,20 @@ export const Admin = () => {
 
                         {editingId === p.id ? (
                           <>
-                            {/* EN MODO EDICIÓN, MOSTRAMOS LA CAJA DE DESCRIPCIÓN */}
+                            {/* EN MODO EDICIÓN, MOSTRAMOS INPUTS DE NOMBRE Y DESCRIPCIÓN */}
                             <td className="p-4 w-1/3">
-                              <p className="font-semibold text-gray-800">{p.name}</p>
+                              <input 
+                                type="text" 
+                                value={editName} 
+                                onChange={e => setEditName(e.target.value)} 
+                                className="w-full p-1.5 border border-gray-400 rounded text-sm font-semibold text-gray-900 mb-2" 
+                              />
                               <input 
                                 type="text" 
                                 value={editDescription} 
                                 onChange={e => setEditDescription(e.target.value)} 
                                 placeholder="Agregar descripción o detalle..." 
-                                className="w-full mt-2 p-1.5 border border-gray-400 rounded text-sm" 
+                                className="w-full p-1.5 border border-gray-400 rounded text-sm" 
                               />
                             </td>
                             <td className="p-4 text-sm text-gray-500">{p.category}</td>
@@ -390,7 +406,6 @@ export const Admin = () => {
             </div>
           ) : (
             <div>
-              {/* LISTA CLIENTES (Igual) */}
               <div className="block md:hidden space-y-4">
                 {profiles.map(user => (
                   <div key={user.id} className={`p-4 border rounded-lg shadow-sm ${user.is_active ? 'bg-white border-gray-200' : 'bg-red-50 border-red-200'}`}>
@@ -458,7 +473,6 @@ export const Admin = () => {
                 <input type="text" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
               </div>
 
-              {/* NUEVO: INPUT PARA DESCRIPCIÓN AL CREAR */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Descripción (Opcional)</label>
                 <input type="text" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} placeholder="Detalle del repuesto..." className="w-full border border-gray-300 rounded p-2 focus:border-yellow-600 focus:outline-none" />
