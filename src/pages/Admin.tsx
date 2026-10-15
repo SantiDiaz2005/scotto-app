@@ -32,15 +32,35 @@ export const Admin = () => {
 
   const navigate = useNavigate();
 
+  // NUEVO: Control de Seguridad Estricto (Candado + Permisos)
   useEffect(() => {
     const checkSecurity = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // 1. Si no hay sesión iniciada, lo mandamos al login
       if (!session) {
         navigate('/login');
         return;
       }
+
+      // 2. Verificamos que el mail del usuario sea de un administrador.
+      // ACÁ PODÉS AGREGAR EL MAIL DE SCOTTO CUANDO SE CREE LA CUENTA
+      const adminEmails = [
+        'santi.diazgiannone2@gmail.com', 
+        'mail.de.scotto@ejemplo.com'
+      ];
+      
+      // Si el correo del usuario no está en la lista de arriba...
+      if (!adminEmails.includes(session.user.email || '')) {
+         // Lo rebotamos de vuelta a la vista de cliente
+         navigate('/catalogo');
+         return;
+      }
+
+      // 3. Si pasó ambos filtros, es un admin y le cargamos los datos
       loadData();
     };
+    
     checkSecurity();
   }, [navigate]);
 
