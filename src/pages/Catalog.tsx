@@ -1,5 +1,6 @@
-import  { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../config/supabase';
 import type { Product } from '../models/product.model';
 import { productService } from '../services/product.service';
 import { ProductCard } from '../components/products/ProductCard';
@@ -19,6 +20,18 @@ export const Catalog = () => {
 
   const userProfileString = localStorage.getItem('user_profile');
   const userProfile = userProfileString ? JSON.parse(userProfileString) : null;
+
+  // CANDADO DE SEGURIDAD PARA EL CATÁLOGO
+  useEffect(() => {
+    const checkSecurity = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      // Si no hay sesión iniciada, lo pateamos al Login instantáneamente
+      if (!session) {
+        navigate('/login');
+      }
+    };
+    checkSecurity();
+  }, [navigate]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -93,7 +106,8 @@ export const Catalog = () => {
                 )}
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  await supabase.auth.signOut();
                   localStorage.removeItem('user_profile');
                   navigate('/login');
                 }}
