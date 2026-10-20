@@ -11,11 +11,13 @@ export const Admin = () => {
   const [activeTab, setActiveTab] = useState<'productos' | 'clientes'>('productos');
   const [loading, setLoading] = useState(true);
   
+  // ESTADO DE AUTORIZACIÓN ESTRICTA
+  const [isAuthorized, setIsAuthorized] = useState(false); 
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // ESTADOS DE EDICIÓN
-  const [editName, setEditName] = useState<string>(''); // NUEVO: Estado para el nombre
+  const [editName, setEditName] = useState<string>(''); 
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editStock, setEditStock] = useState<number>(0);
   const [editDescription, setEditDescription] = useState<string>(''); 
@@ -32,32 +34,32 @@ export const Admin = () => {
 
   const navigate = useNavigate();
 
-  // NUEVO: Control de Seguridad Estricto (Candado + Permisos)
+  // CANDADO DE SEGURIDAD CON BASE DE DATOS
   useEffect(() => {
     const checkSecurity = async () => {
+      // 1. Vemos si hay sesión
       const { data: { session } } = await supabase.auth.getSession();
       
-      // 1. Si no hay sesión iniciada, lo mandamos al login
       if (!session) {
         navigate('/login');
         return;
       }
 
-      // 2. Verificamos que el mail del usuario sea de un administrador.
-      // ACÁ PODÉS AGREGAR EL MAIL DE SCOTTO CUANDO SE CREE LA CUENTA
-      const adminEmails = [
-        'santi.diazgiannone2@gmail.com', 
-        'mail.de.scotto@ejemplo.com'
-      ];
-      
-      // Si el correo del usuario no está en la lista de arriba...
-      if (!adminEmails.includes(session.user.email || '')) {
-         // Lo rebotamos de vuelta a la vista de cliente
+      // 2. Buscamos el rol de este usuario en la base de datos
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      // 3. Si no existe o no es admin, lo pateamos al catálogo
+      if (!profile || profile.role !== 'admin') {
          navigate('/catalogo');
          return;
       }
 
-      // 3. Si pasó ambos filtros, es un admin y le cargamos los datos
+      // Si llegó hasta acá, es el ADMIN de verdad. Levantamos el telón.
+      setIsAuthorized(true);
       loadData();
     };
     
@@ -82,7 +84,7 @@ export const Admin = () => {
 
   const startEditing = (product: Product) => {
     setEditingId(product.id);
-    setEditName(product.name); // Cargamos el nombre actual
+    setEditName(product.name); 
     setEditPrice(product.price);
     setEditStock(product.stock || 0);
     setEditDescription(product.description || ''); 
@@ -90,7 +92,7 @@ export const Admin = () => {
 
   const saveChanges = async (id: string) => {
     await productService.updateProduct(id, { 
-      name: editName, // Guardamos el nuevo nombre
+      name: editName, 
       price: editPrice, 
       stock: editStock,
       description: editDescription 
@@ -196,6 +198,15 @@ export const Admin = () => {
   const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
+  // EL TELÓN: Si no está autorizado todavía, mostramos pantalla negra cargando
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-black flex justify-center items-center">
+         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-yellow-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans pb-20">
       <div className="max-w-6xl mx-auto">
@@ -277,13 +288,11 @@ export const Admin = () => {
                       </label>
                     </div>
                     
-                    {/* MOSTRAMOS EL NOMBRE COMO TEXTO SI NO EDITA */}
                     {!editingId && <h4 className="font-bold text-gray-900 leading-tight">{p.name}</h4>}
                     {p.description && !editingId && <p className="text-sm text-gray-600 italic">{p.description}</p>}
                     
                     {editingId === p.id ? (
                       <div className="flex flex-col gap-3 mt-2 p-3 bg-gray-50 rounded border border-gray-200">
-                        {/* NUEVO INPUT PARA EL NOMBRE EN CELULAR */}
                         <div className="flex flex-col gap-1">
                           <span className="text-sm font-bold text-gray-600">Nombre del artículo:</span>
                           <input 
@@ -369,7 +378,6 @@ export const Admin = () => {
 
                         {editingId === p.id ? (
                           <>
-                            {/* EN MODO EDICIÓN, MOSTRAMOS INPUTS DE NOMBRE Y DESCRIPCIÓN */}
                             <td className="p-4 w-1/3">
                               <input 
                                 type="text" 
