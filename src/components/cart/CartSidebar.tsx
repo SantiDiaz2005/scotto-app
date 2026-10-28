@@ -89,14 +89,15 @@ export const CartSidebar = () => {
   const sendWhatsApp = () => {
     const phoneNumber = "5493512254595"; 
     
-    let message = "Hola SA Scotto! Quiero hacer el siguiente pedido:\n\n";
+    let message = "Hola SA Scotto, quiero hacer el siguiente pedido:\n\n";
 
     items.forEach(item => {
-      message += `- ${item.quantity}x ${item.product.name} ($${item.product.price.toLocaleString('es-AR')} c/u)\n`;
+      // Usamos viñetas y formato más compacto
+      message += `▪️ ${item.quantity} x ${item.product.name} ($${item.product.price.toLocaleString('es-AR')})\n`;
     });
 
-    message += `\n*Total estimado: $${getTotal().toLocaleString('es-AR')}*\n\n`;
-    message += "Por favor, confírmenme stock y métodos de pago. ¡Gracias!";
+    // Total en negritas sin frases extra largas
+    message += `\n*Total estimado: $${getTotal().toLocaleString('es-AR')}*`;
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
