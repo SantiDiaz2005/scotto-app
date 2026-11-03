@@ -113,6 +113,29 @@ export const Admin = () => {
     setIsSaving(false);
   };
 
+  // FUNCIÓN PARA ELIMINAR ARTÍCULOS
+  const handleDeleteProduct = async (id: string) => {
+    const confirmar = window.confirm("¿Estás seguro de que querés eliminar este artículo del catálogo? Esta acción no se puede deshacer.");
+    
+    if (confirmar) {
+      try {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setProducts(products.filter(p => p.id !== id));
+        alert("Artículo eliminado correctamente.");
+        
+      } catch (error) {
+        console.error("Error al eliminar:", error);
+        alert("Hubo un error al intentar eliminar el artículo.");
+      }
+    }
+  };
+
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     await authService.toggleUserStatus(id, currentStatus);
     loadData();
@@ -337,9 +360,14 @@ export const Admin = () => {
                             {p.stock} unid.
                           </span>
                         </div>
-                        <button onClick={() => startEditing(p)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm">
-                          ✏️ Editar
-                        </button>
+                        <div className="flex gap-2">
+                          <button onClick={() => startEditing(p)} className="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm">
+                            ✏️
+                          </button>
+                          <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-600 text-white px-3 py-2 rounded text-sm font-bold shadow-sm">
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -410,7 +438,12 @@ export const Admin = () => {
                             <td className="p-4 text-sm text-gray-500">{p.category}</td>
                             <td className="p-4 text-right font-bold text-green-700">${p.price.toLocaleString('es-AR')}</td>
                             <td className="p-4 text-center"><span className={`px-3 py-1 rounded-full text-xs font-bold ${p.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{p.stock} unid.</span></td>
-                            <td className="p-4 flex justify-center"><button onClick={() => startEditing(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-1.5 rounded text-sm font-semibold shadow-sm transition-colors">✏️ Editar</button></td>
+                            <td className="p-4 text-center">
+                              <div className="flex justify-center gap-2">
+                                <button onClick={() => startEditing(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-semibold shadow-sm transition-colors" title="Editar">✏️ Editar</button>
+                                <button onClick={() => handleDeleteProduct(p.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-semibold shadow-sm transition-colors" title="Eliminar">🗑️</button>
+                              </div>
+                            </td>
                           </>
                         )}
                       </tr>

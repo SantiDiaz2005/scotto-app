@@ -5,6 +5,12 @@ import { supabase } from '../config/supabase';
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // CAMPOS RECUPERADOS PARA EL REGISTRO
+  const [name, setName] = useState('');
+  const [dni, setDni] = useState('');
+  const [phone, setPhone] = useState('');
+  
   const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -18,16 +24,33 @@ export const Login = () => {
 
     try {
       if (isRegistering) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        // 1. Guardamos correo y contraseña en seguridad
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        alert('Cuenta creada. Ya podés iniciar sesión.');
+        
+        // 2. Armamos la ficha completa en tu tabla 'profiles' automáticamente
+        if (data.user) {
+          const { error: profileError } = await supabase.from('profiles').insert([{
+            id: data.user.id,
+            email: email,
+            name: name,
+            dni: dni,
+            phone: phone,
+            role: 'cliente',
+            is_active: true
+          }]);
+          
+          if (profileError) throw profileError;
+        }
+
+        alert('Cuenta creada exitosamente. Ya podés iniciar sesión.');
         setIsRegistering(false);
+        setPassword('');
       } else {
-        // 1. Iniciamos sesión
+        // INICIO DE SESIÓN
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        // 2. Buscamos los datos del usuario en la base de datos
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
@@ -35,17 +58,14 @@ export const Login = () => {
           .single();
 
         if (profile) {
-          // 3. Guardamos los datos para que el catálogo los pueda mostrar en el menú
           localStorage.setItem('user_profile', JSON.stringify(profile));
-          
-          // 4. Redirigimos al lugar correcto según el rol
           if (profile.role === 'admin') {
             navigate('/admin');
           } else {
             navigate('/catalogo');
           }
         } else {
-          navigate('/catalogo'); // Por defecto si falla algo
+          navigate('/catalogo');
         }
       }
     } catch (error: any) {
@@ -65,16 +85,14 @@ export const Login = () => {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Capa oscurecedora suave, SIN efecto borroso para que se lean las marcas */}
       <div className="absolute inset-0 bg-black/40 z-0"></div>
 
-      {/* CUADRO DE LOGIN */}
       <div className="max-w-sm w-full bg-gray-900 rounded-xl shadow-2xl p-6 border border-gray-800 z-10 relative">
         <div className="flex justify-center mb-6">
           <img src="/logo.png" alt="SA Scotto Accesorios" className="h-24 md:h-28 object-contain" />
         </div>
 
-        <h2 className="text-center text-white text-lg md:text-xl font-bold mb-6">
+        <h2 className="text-center text-white text-lg md:text-xl font-bold mb-4">
           {isRegistering ? 'Crear Nueva Cuenta' : 'Iniciar Sesión'}
         </h2>
 
@@ -84,7 +102,46 @@ export const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          
+          {/* CAMPOS QUE APARECEN SOLO AL REGISTRARSE */}
+          {isRegistering && (
+            <>
+              <div>
+                <label className="block text-gray-400 text-xs font-bold mb-1">Nombre y Apellido / Razón Social</label>
+                <input 
+                  type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-yellow-600 text-sm"
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <div className="w-1/2">
+                  <label className="block text-gray-400 text-xs font-bold mb-1">DNI / CUIT</label>
+                  <input 
+                    type="text" 
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-yellow-600 text-sm"
+                    required
+                  />
+                </div>
+                <div className="w-1/2">
+                  <label className="block text-gray-400 text-xs font-bold mb-1">Teléfono</label>
+                  <input 
+                    type="text" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white focus:outline-none focus:border-yellow-600 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-gray-400 text-xs font-bold mb-1">Correo electrónico</label>
             <input 
@@ -115,7 +172,7 @@ export const Login = () => {
           </button>
         </form>
 
-        <div className="mt-6 flex flex-col items-center gap-2 text-sm">
+        <div className="mt-5 flex flex-col items-center gap-2 text-sm">
           <button 
             onClick={() => setIsRegistering(!isRegistering)}
             className="text-gray-400 hover:text-white underline transition-colors"
