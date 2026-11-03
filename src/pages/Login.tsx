@@ -44,10 +44,10 @@ export const Login = () => {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Capa oscura/borrosa para que resalte el cuadro azul oscuro */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-0"></div>
+      {/* Capa oscurecedora MUY suave, SIN efecto borroso para que se lean las marcas */}
+      <div className="absolute inset-0 bg-black/40 z-0"></div>
 
-      {/* CUADRO DE LOGIN (Más compacto) */}
+      {/* CUADRO DE LOGIN */}
       <div className="max-w-sm w-full bg-gray-900 rounded-xl shadow-2xl p-6 border border-gray-800 z-10 relative">
         <div className="flex justify-center mb-6">
           <img src="/logo.png" alt="SA Scotto Accesorios" className="h-24 md:h-28 object-contain" />
@@ -65,7 +65,7 @@ export const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-gray-400 text-xs font-bold mb-1">Email</label>
+            <label className="block text-gray-400 text-xs font-bold mb-1">Correo electrónico</label>
             <input 
               type="email" 
               value={email}
@@ -99,7 +99,7 @@ export const Login = () => {
             onClick={() => setIsRegistering(!isRegistering)}
             className="text-gray-400 hover:text-white underline transition-colors"
           >
-            {isRegistering ? '¿Ya tenés cuenta? Iniciar sesión' : '¿No tenés cuenta? Crear cuenta'}
+            {isRegistering ? '¿Ya tienes cuenta? Iniciar sesión' : '¿No tienes cuenta? Crear cuenta'}
           </button>
           
           {!isRegistering && (
