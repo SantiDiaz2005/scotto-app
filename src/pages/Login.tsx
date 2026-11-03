@@ -23,9 +23,30 @@ export const Login = () => {
         alert('Cuenta creada. Ya podés iniciar sesión.');
         setIsRegistering(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        // 1. Iniciamos sesión
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate('/catalogo');
+
+        // 2. Buscamos los datos del usuario en la base de datos
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile) {
+          // 3. Guardamos los datos para que el catálogo los pueda mostrar en el menú
+          localStorage.setItem('user_profile', JSON.stringify(profile));
+          
+          // 4. Redirigimos al lugar correcto según el rol
+          if (profile.role === 'admin') {
+            navigate('/admin');
+          } else {
+            navigate('/catalogo');
+          }
+        } else {
+          navigate('/catalogo'); // Por defecto si falla algo
+        }
       }
     } catch (error: any) {
       setErrorMsg(error.message || 'Ocurrió un error inesperado.');
@@ -44,7 +65,7 @@ export const Login = () => {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Capa oscurecedora MUY suave, SIN efecto borroso para que se lean las marcas */}
+      {/* Capa oscurecedora suave, SIN efecto borroso para que se lean las marcas */}
       <div className="absolute inset-0 bg-black/40 z-0"></div>
 
       {/* CUADRO DE LOGIN */}
