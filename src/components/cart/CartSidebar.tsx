@@ -14,7 +14,6 @@ export const CartSidebar = () => {
 
     const doc = new jsPDF();
     
-    // Título y fecha
     doc.setFontSize(18);
     doc.text("Pedido - SA Scotto", 14, 22);
     
@@ -22,7 +21,6 @@ export const CartSidebar = () => {
     const date = new Date().toLocaleDateString('es-AR');
     doc.text(`Fecha: ${date}`, 14, 30);
 
-    // Armamos los datos para la tabla
     const tableColumn = ["Producto", "Cantidad", "Precio Unitario", "Subtotal"];
     const tableRows: any[] = [];
 
@@ -36,16 +34,14 @@ export const CartSidebar = () => {
       tableRows.push(productData);
     });
 
-    // Dibujamos la tabla usando el plugin autotable
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 40,
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42] } // Color azul oscuro de la app
+      headStyles: { fillColor: [15, 23, 42] } 
     });
 
-    // Total al final
     const finalY = (doc as any).lastAutoTable.finalY || 40;
     doc.setFontSize(14);
     doc.text(`TOTAL ESTIMADO: $${getTotal().toLocaleString('es-AR')}`, 14, finalY + 15);
@@ -57,7 +53,6 @@ export const CartSidebar = () => {
   const downloadExcel = () => {
     if (items.length === 0) return;
 
-    // Armamos un array de objetos (cada objeto es una fila del Excel)
     const excelData = items.map(item => ({
       Producto: item.product.name,
       Categoría: item.product.category,
@@ -66,7 +61,6 @@ export const CartSidebar = () => {
       Subtotal: item.product.price * item.quantity
     }));
 
-    // Agregamos una fila en blanco y luego la del Total General
     excelData.push({ Producto: '', Categoría: '', Cantidad: 0, 'Precio Unit.': 0, Subtotal: 0 });
     excelData.push({
       Producto: 'TOTAL GENERAL',
@@ -76,12 +70,10 @@ export const CartSidebar = () => {
       Subtotal: getTotal()
     });
 
-    // Creamos el archivo Excel
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
 
-    // Lo descargamos
     XLSX.writeFile(workbook, "pedido_scotto.xlsx");
   };
 
@@ -92,11 +84,9 @@ export const CartSidebar = () => {
     let message = "Hola SA Scotto, quiero hacer el siguiente pedido:\n\n";
 
     items.forEach(item => {
-      // Usamos viñetas y formato más compacto
       message += `▪️ ${item.quantity} x ${item.product.name} ($${item.product.price.toLocaleString('es-AR')})\n`;
     });
 
-    // Total en negritas sin frases extra largas
     message += `\n*Total estimado: $${getTotal().toLocaleString('es-AR')}*`;
 
     const encodedMessage = encodeURIComponent(message);
@@ -105,31 +95,34 @@ export const CartSidebar = () => {
 
   return (
     <React.Fragment>
+      {/* BOTÓN FLOTANTE (Ahora visible en TODAS las pantallas) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="md:hidden fixed bottom-6 right-6 bg-yellow-600 text-black p-4 rounded-full shadow-2xl z-50 flex items-center justify-center font-bold border-2 border-black"
+          className="fixed bottom-6 right-6 md:bottom-8 md:right-8 bg-yellow-600 hover:bg-yellow-500 hover:scale-105 transition-all text-black p-4 rounded-full shadow-2xl z-50 flex items-center justify-center font-bold border-2 border-black"
         >
-          🛒 <span className="ml-2 bg-black text-white px-2 rounded-full text-sm">{items.length}</span>
+          🛒 <span className="ml-2 bg-black text-white px-2 py-0.5 rounded-full text-sm">{items.length}</span>
         </button>
       )}
 
+      {/* FONDO OSCURO AL ABRIR EL CARRITO */}
       {isOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
           onClick={() => setIsOpen(false)}
         />
       )}
 
+      {/* PANEL DEL CARRITO (Siempre deslizable, fijo a la derecha) */}
       <div className={`
-        fixed inset-y-0 right-0 z-50 w-5/6 max-w-sm bg-[#0F172A] border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0 md:w-96
+        fixed inset-y-0 right-0 z-50 w-5/6 max-w-sm md:w-[400px] bg-[#0F172A] border-l border-gray-700 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : 'translate-x-full'}
       `}>
         
         <div className="p-4 bg-[#1E293B] border-b border-gray-700 flex justify-between items-center text-white">
           <h2 className="text-xl font-bold flex items-center gap-2">🛒 Pedido Actual</h2>
-          <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white text-2xl font-bold p-2">✕</button>
+          {/* BOTÓN CERRAR (Cruz) */}
+          <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white text-2xl font-bold p-2 transition-colors">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
